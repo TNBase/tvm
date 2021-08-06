@@ -1165,3 +1165,11 @@ def gather_nd_shape_func(attrs, inputs, _):
     assert index_rank > 0, "index_rank needs to be specified for dynamic gather_nd"
 
     return [_gather_nd_shape(inputs[0], inputs[1], convert(batch_dims), convert(index_rank))]
+
+
+@_reg.register_compute("tensordot")
+def compute_tensordot(attrs, inputs, output_type):
+    """compute definition of tensordot"""
+    return [topi.tensordot(inputs[0], inputs[1], attrs.axes)]
+
+_reg.register_strategy("tensordot", strategy.tensordot_strategy)

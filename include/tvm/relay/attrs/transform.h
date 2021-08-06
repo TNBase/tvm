@@ -489,6 +489,18 @@ struct UniqueAttrs : public tvm::AttrsNode<UniqueAttrs> {
   }
 };  // struct UniqueAttrs
 
+
+/* \brief Attributes used in tensordot operator */
+struct TensordotAttrs : public tvm::AttrsNode<TensordotAttrs> {
+  Array<Array<Integer>> axes;
+
+  TVM_DECLARE_ATTRS(TensordotAttrs, "relay.attrs.TensordotAttrs") {
+    TVM_ATTR_FIELD(axes).describe("The axes to contract the tensor over");
+  }
+
+}; // struct TensordotAttrs
+
+
 }  // namespace relay
 }  // namespace tvm
 #endif  // TVM_RELAY_ATTRS_TRANSFORM_H_

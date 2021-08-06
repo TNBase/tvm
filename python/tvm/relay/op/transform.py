@@ -1756,3 +1756,34 @@ def invert_permutation(data):
         relay.invert_permutation(data) = [2, 4, 3, 0, 1]
     """
     return _make.invert_permutation(data)
+
+
+def tensordot(a, b, axes):
+    """
+    A generalization of matrix multiplication to tensor.
+
+    Parameters
+    ----------
+
+    a: The tensor A
+
+    b: The tensor B
+
+    axes: The number of dimensions to reduce over
+
+    Returns
+    --------
+
+    A tensor computing the results
+    """
+    
+    # the c++ code always expects the axes as an array of axes.
+
+    if isinstance( axes[0], int ):
+        axes[0] = [axes[0]]
+
+    
+    if isinstance( axes[1], int ):
+        axes[1] = [axes[1]]
+
+    return _make.tensordot(a, b, axes)

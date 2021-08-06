@@ -1669,3 +1669,25 @@ def invert_permutation_strategy(attrs, inputs, out_type, target):
         name="invert_permutation.generic",
     )
     return strategy
+
+# tensordot here
+def wrap_compute_tensordot(topi_compute):
+    """Wrap tensordot topi compute"""
+
+    def _compute_tensordot(attrs, inputs, _):
+        return [topi_compute(inputs[0], inputs[1], attrs.axes)]
+
+    return _compute_tensordot
+
+@override_native_generic_func("tensordot_strategy")
+
+def tensordot_strategy(attrs, inputs, out_type, target):
+    """tensordot generic strategy"""
+    strategy = _op.OpStrategy()
+    strategy.add_implementation(
+        wrap_compute_tensordot(topi.tensordot),
+        wrap_topi_schedule(topi.generic.schedule_extern),
+        name = "tensordot.generic"
+    )
+
+    return strategy

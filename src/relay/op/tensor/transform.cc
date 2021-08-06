@@ -4008,5 +4008,100 @@ RELAY_REGISTER_OP("invert_permutation")
     .set_attr<TOpPattern>("TOpPattern", kInjective)
     .set_attr<TOpIsStateful>("TOpIsStateful", false);
 
+TVM_REGISTER_NODE_TYPE(TensordotAttrs);
+bool TensordotRel(const Array<Type>& types, int num_inputs, const Attrs& attrs, const TypeReporter& reporter) {
+  // [tensor1, tensor2, output]
+  // ICHECK_EQ(types.size(), 3);
+  // // get pointers to input tensors
+  const auto* tensor1 = types[0].as<TensorTypeNode>();
+  const auto* tensor2 = types[1].as<TensorTypeNode>();
+
+  // // get parameters which includes only the axes
+  const auto* param = attrs.as<TensordotAttrs>();
+  
+  // number of contracted_axis
+  int tensor1_order = static_cast<int>(tensor1->shape.size());
+  int tensor2_order = static_cast<int>(tensor2->shape.size());
+  int contracted_indices = static_cast<int>(param->axes[0].size());
+
+  int num_output_indices = tensor1_order + tensor2_order - (2*contracted_indices);
+  
+  
+  // assert that the contracted dimensions have the same sizes. We do this for all sizes in the array
+  // comment out below because this doesnt really work
+
+  for (int i=0; i < static_cast<int>(param->axes[0].size()); i++){
+
+    // tensor1->shape[param->axes[0][i]]) -- size of first contracted dim 
+    // tensor2->shape[param->axes[1][i]]) -- size of second contracted dim
+
+    reporter->AssertEQ(tensor1->shape[param->axes[0][i]], tensor2->shape[param->axes[1][i]]);    
+  
+  }
+
+  // create an empty array for the output shape 
+  std::vector<IndexExpr> oshape;
+  oshape.reserve(num_output_indices);
+  // add the shapes of tensor1 to output shapes, excluding the contracted dimensions
+  for (int i=0; i < static_cast<int>(tensor1->shape.size()); i++){
+    
+    // check if the index i is in the contracted indices
+    bool is_uncontracted_axis = true;
+    for (int j=0; j < static_cast<int>(param->axes[0].size()); j++){
+      if (i == static_cast<int>(param->axes[0][j])){
+        is_uncontracted_axis = false;
+      }
+    }
+
+    if (is_uncontracted_axis){
+      oshape.emplace_back(tensor1->shape[i]);
+    }
+  }
+
+  // // add the shapes of tensor2 to the output shapes, excluding the contracted dimension
+  for (int i=0; i < static_cast<int>(tensor2->shape.size()); i++){
+    
+    // check if the index i is in the contracted indices
+    bool is_uncontracted_axis = true;
+    for (int j=0; j < static_cast<int>(param->axes[1].size()); j++){
+      if (i == static_cast<int>(param->axes[1][j])){
+        is_uncontracted_axis = false;
+      }
+    }
+    if (is_uncontracted_axis){
+      oshape.emplace_back(tensor2->shape[i]);
+    }
+  }
+
+  // assign the output type
+  reporter-> Assign(types[2], TensorType(oshape, tensor1-> dtype));
+  
+  return true;
+  }
+
+RELAY_REGISTER_OP("tensordot")
+      .describe(R"code(A generalization of matrix multiplication to tensor.)code" TVM_ADD_FILELINE)
+      .set_num_inputs(2)
+      .add_argument("a", "Tensor", "The tensor A")
+      .add_argument("b", "Tensor", "The tensor B")
+      .add_argument("axes", "","The number of dimensions to reduce over")
+      .set_support_level(3)
+      .add_type_rel("Tensordot", TensordotRel)
+      .set_attr<TOpPattern>("TOpPattern", kOpaque);
+
+
+Expr MakeTensordot(Expr tensor1, Expr tensor2, Array<Array<Integer>> axes){
+  auto attrs = make_object<TensordotAttrs>();
+
+  attrs->axes = axes;
+
+  static const Op& op = Op::Get("tensordot");
+  return Call(op, {tensor1, tensor2}, Attrs(attrs), {});
+}
+
+TVM_REGISTER_GLOBAL("relay.op._make.tensordot").set_body_typed(MakeTensordot);
+
+
+
 }  // namespace relay
 }  // namespace tvm
